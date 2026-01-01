@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>FoodLog</title>
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a1a2e">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥗</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231a1a2e' width='100' height='100'/><text y='.9em' font-size='90'>🥗</text></svg>">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         body {
@@ -214,6 +212,8 @@ Avondeten: pasta bolognese"></textarea>
     </div>
 
 <script>
+const PROXY_URL = 'https://fatsecret-proxy.petermrman.workers.dev';
+
 const app = {
     clientId: '', clientSecret: '', consumerKey: '', consumerSecret: '',
     accessToken: null, tokenExpiry: null, userToken: '', userSecret: '',
@@ -288,7 +288,7 @@ const app = {
         
         try {
             this.updateStatus(false, 'Verbinden...');
-            const res = await fetch('https://oauth.fatsecret.com/connect/token', {
+            const res = await fetch(`${PROXY_URL}/oauth/token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
@@ -346,7 +346,7 @@ const app = {
             btn.disabled = true; btn.textContent = 'Bezig...';
             
             const callback = window.location.href.split('?')[0];
-            const url = 'https://www.fatsecret.com/oauth/request_token';
+            const realUrl = 'https://www.fatsecret.com/oauth/request_token';
             const params = {
                 oauth_callback: callback,
                 oauth_consumer_key: this.consumerKey,
@@ -355,12 +355,15 @@ const app = {
                 oauth_timestamp: Math.floor(Date.now()/1000).toString(),
                 oauth_version: '1.0'
             };
-            params.oauth_signature = await this.generateSignature('POST', url, params, '');
+            params.oauth_signature = await this.generateSignature('POST', realUrl, params, '');
             
             const authHeader = 'OAuth ' + Object.keys(params)
                 .map(k => `${this.percentEncode(k)}="${this.percentEncode(params[k])}"`).join(', ');
             
-            const res = await fetch(url, { method: 'POST', headers: { 'Authorization': authHeader } });
+            const res = await fetch(`${PROXY_URL}/oauth/request_token`, { 
+                method: 'POST', 
+                headers: { 'Authorization': authHeader } 
+            });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             
             const text = await res.text();
@@ -389,7 +392,7 @@ const app = {
         if (!secret) return;
         
         try {
-            const url = 'https://www.fatsecret.com/oauth/access_token';
+            const realUrl = 'https://www.fatsecret.com/oauth/access_token';
             const oauthParams = {
                 oauth_consumer_key: this.consumerKey,
                 oauth_nonce: this.generateNonce(),
@@ -399,12 +402,15 @@ const app = {
                 oauth_verifier: verifier,
                 oauth_version: '1.0'
             };
-            oauthParams.oauth_signature = await this.generateSignature('POST', url, oauthParams, secret);
+            oauthParams.oauth_signature = await this.generateSignature('POST', realUrl, oauthParams, secret);
             
             const authHeader = 'OAuth ' + Object.keys(oauthParams)
                 .map(k => `${this.percentEncode(k)}="${this.percentEncode(oauthParams[k])}"`).join(', ');
             
-            const res = await fetch(url, { method: 'POST', headers: { 'Authorization': authHeader } });
+            const res = await fetch(`${PROXY_URL}/oauth/access_token`, { 
+                method: 'POST', 
+                headers: { 'Authorization': authHeader } 
+            });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             
             const text = await res.text();
@@ -430,7 +436,7 @@ const app = {
         const token = await this.getAccessToken();
         if (!token) return [];
         try {
-            const res = await fetch('https://platform.fatsecret.com/rest/server.api', {
+            const res = await fetch(`${PROXY_URL}/rest/server.api`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({ method: 'foods.search', search_expression: query, format: 'json', max_results: max })
@@ -446,7 +452,7 @@ const app = {
         const token = await this.getAccessToken();
         if (!token) return null;
         try {
-            const res = await fetch('https://platform.fatsecret.com/rest/server.api', {
+            const res = await fetch(`${PROXY_URL}/rest/server.api`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({ method: 'food.get.v4', food_id: foodId, format: 'json' })
@@ -459,7 +465,7 @@ const app = {
     async addFoodEntry(foodId, servingId, units, meal, name) {
         if (!this.userToken || !this.userSecret) { alert('Koppel eerst je account'); return false; }
         try {
-            const url = 'https://platform.fatsecret.com/rest/server.api';
+            const realUrl = 'https://platform.fatsecret.com/rest/server.api';
             const params = {
                 format: 'json', method: 'food_entry.create.v2',
                 food_id: foodId, food_entry_name: name,
@@ -474,12 +480,12 @@ const app = {
                 oauth_version: '1.0'
             };
             const all = { ...params, ...oauthParams };
-            oauthParams.oauth_signature = await this.generateSignature('POST', url, all, this.userSecret);
+            oauthParams.oauth_signature = await this.generateSignature('POST', realUrl, all, this.userSecret);
             
             const authHeader = 'OAuth ' + Object.keys(oauthParams)
                 .map(k => `${this.percentEncode(k)}="${this.percentEncode(oauthParams[k])}"`).join(', ');
             
-            const res = await fetch(url, {
+            const res = await fetch(`${PROXY_URL}/rest/server.api`, {
                 method: 'POST',
                 headers: { 'Authorization': authHeader, 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams(params)
