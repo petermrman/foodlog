@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>FoodLog</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #eee;
+            min-height: 100vh;
+            padding: 16px;
+            padding-bottom: 100px;
+        }
+        .header { text-align: center; padding: 20px 0; }
+        .header h1 { color: #4ade80; font-size: 28px; font-weight: 700; }
+        
+        .status {
+            background: rgba(255,255,255,0.05);
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%; background: #f87171;
+        }
+        .status-dot.connected { background: #4ade80; }
+        
+        .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+        .tab {
+            flex: 1; padding: 12px 8px; border: none; border-radius: 10px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            background: rgba(255,255,255,0.05); color: #94a3b8; transition: all 0.2s;
+        }
+        .tab.active { background: #4ade80; color: #1a1a2e; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .card-title {
+            font-size: 13px; color: #94a3b8; margin-bottom: 12px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        
+        textarea, input[type="text"], input[type="password"] {
+            width: 100%; padding: 14px; border: none; border-radius: 10px;
+            background: rgba(0,0,0,0.3); color: #eee; font-size: 16px; resize: none;
+        }
+        textarea { min-height: 100px; }
+        textarea::placeholder, input::placeholder { color: #64748b; }
+        
+        .btn {
+            width: 100%; padding: 14px; border: none; border-radius: 10px;
+            font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.1s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: #4ade80; color: #1a1a2e; margin-top: 12px; }
+        .btn-secondary { background: #3b82f6; color: white; margin-top: 12px; }
+        .btn-success { background: #22c55e; color: white; }
+        .btn-danger { background: #7f1d1d; color: white; margin-top: 12px; }
+        
+        .food-item {
+            background: rgba(0,0,0,0.3); border-radius: 12px; padding: 14px; margin-bottom: 10px;
+        }
+        .food-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+        .food-meta { font-size: 12px; color: #64748b; margin-bottom: 10px; }
+        
+        .food-match {
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            border-radius: 8px; padding: 10px; margin-top: 10px;
+        }
+        
+        .macros {
+            display: flex; gap: 12px; margin-top: 8px; font-size: 12px; color: #94a3b8;
+        }
+        .macros span { color: #4ade80; font-weight: 600; }
+        
+        select {
+            width: 100%; padding: 10px; border: none; border-radius: 8px;
+            background: rgba(0,0,0,0.4); color: #eee; font-size: 14px; margin-top: 8px;
+        }
+        
+        .food-actions { display: flex; gap: 8px; margin-top: 10px; }
+        .food-actions .btn { flex: 1; margin-top: 0; padding: 10px; font-size: 14px; }
+        
+        .error-box {
+            background: rgba(127, 29, 29, 0.5); border-radius: 8px;
+            padding: 10px; margin-top: 10px; font-size: 13px;
+        }
+        
+        .loading { text-align: center; padding: 30px; color: #64748b; }
+        .loading::after { content: ''; animation: dots 1.5s infinite; }
+        @keyframes dots {
+            0%, 20% { content: '.'; } 40% { content: '..'; } 60%, 100% { content: '...'; }
+        }
+        
+        .input-group { margin-bottom: 12px; }
+        .input-label { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+        .help-text { font-size: 12px; color: #64748b; margin-top: 8px; line-height: 1.5; }
+        .divider { height: 1px; background: rgba(255,255,255,0.1); margin: 20px 0; }
+        
+        .search-result {
+            background: rgba(0,0,0,0.3); border-radius: 10px; padding: 12px; margin-bottom: 8px;
+        }
+        .search-result-name { font-weight: 600; font-size: 14px; }
+        .search-result-brand { font-size: 12px; color: #64748b; }
+        .search-result-macros { font-size: 12px; color: #94a3b8; margin-top: 6px; }
+        
+        .toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: #22c55e; color: white; padding: 12px 24px;
+            border-radius: 10px; font-weight: 600; z-index: 1000;
+            animation: fadeInUp 0.3s ease;
+        }
+        .toast.error { background: #ef4444; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header"><h1>🥗 FOODLOG</h1></div>
+    
+    <div class="status">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Niet verbonden</span>
+    </div>
+    
+    <div class="tabs">
+        <button class="tab active" data-tab="log">Loggen</button>
+        <button class="tab" data-tab="search">Zoeken</button>
+        <button class="tab" data-tab="settings">⚙️</button>
+    </div>
+    
+    <div id="tab-log" class="tab-content active">
+        <div class="card">
+            <div class="card-title">Wat heb je gegeten?</div>
+            <textarea id="foodInput" placeholder="Bijv:
+Ontbijt: 3 eieren, 2 boterhammen pindakaas
+Lunch: salade met kip
+Avondeten: pasta bolognese"></textarea>
+            <button class="btn btn-primary" id="parseBtn">Verwerk</button>
+        </div>
+        <div class="card" id="resultsCard" style="display:none">
+            <div class="card-title">Gevonden items</div>
+            <div id="resultsList"></div>
+            <button class="btn btn-primary" id="addAllBtn" style="display:none">Alles Toevoegen</button>
+        </div>
+    </div>
+    
+    <div id="tab-search" class="tab-content">
+        <div class="card">
+            <div class="card-title">Zoek voedingsmiddel</div>
+            <input type="text" id="searchInput" placeholder="Bijv: volkoren brood, kipfilet">
+            <button class="btn btn-secondary" id="searchBtn">Zoeken</button>
+        </div>
+        <div class="card" id="searchResultsCard" style="display:none">
+            <div class="card-title">Resultaten</div>
+            <div id="searchResultsList"></div>
+        </div>
+    </div>
+    
+    <div id="tab-settings" class="tab-content">
+        <div class="card">
+            <div class="card-title">API Credentials</div>
+            <div class="input-group">
+                <div class="input-label">Client ID (OAuth 2.0)</div>
+                <input type="text" id="clientId" placeholder="Voor zoeken">
+            </div>
+            <div class="input-group">
+                <div class="input-label">Client Secret</div>
+                <input type="password" id="clientSecret" placeholder="••••••••">
+            </div>
+            <div class="divider"></div>
+            <div class="input-group">
+                <div class="input-label">Consumer Key (OAuth 1.0)</div>
+                <input type="text" id="consumerKey" placeholder="Voor diary schrijven">
+            </div>
+            <div class="input-group">
+                <div class="input-label">Consumer Secret</div>
+                <input type="password" id="consumerSecret" placeholder="••••••••">
+            </div>
+            <button class="btn btn-primary" id="saveBtn">Opslaan & Verbinden</button>
+        </div>
+        <div class="card">
+            <div class="card-title">Account Koppelen</div>
+            <p class="help-text" id="accountStatus">Koppel je FatSecret account om voeding te loggen.</p>
+            <button class="btn btn-secondary" id="connectBtn" disabled>Account Koppelen</button>
+        </div>
+        <div class="card">
+            <div class="card-title">Reset</div>
+            <button class="btn btn-danger" id="resetBtn">Alle data wissen</button>
+        </div>
+    </div>
+
+<script>
+const app = {
+    clientId: '', clientSecret: '', consumerKey: '', consumerSecret: '',
+    accessToken: null, tokenExpiry: null, userToken: '', userSecret: '',
+    parsedItems: [],
+    
+    init() {
+        this.loadCredentials();
+        this.setupEventListeners();
+        this.handleOAuthCallback();
+    },
+    
+    loadCredentials() {
+        const saved = localStorage.getItem('foodlog_creds');
+        if (saved) {
+            const c = JSON.parse(saved);
+            this.clientId = c.clientId || '';
+            this.clientSecret = c.clientSecret || '';
+            this.consumerKey = c.consumerKey || '';
+            this.consumerSecret = c.consumerSecret || '';
+            this.userToken = c.userToken || '';
+            this.userSecret = c.userSecret || '';
+            
+            document.getElementById('clientId').value = this.clientId;
+            document.getElementById('clientSecret').value = this.clientSecret ? '••••••••' : '';
+            document.getElementById('consumerKey').value = this.consumerKey;
+            document.getElementById('consumerSecret').value = this.consumerSecret ? '••••••••' : '';
+            
+            if (this.clientId && this.clientSecret) this.getAccessToken();
+            this.updateAccountStatus();
+        }
+    },
+    
+    saveCredentials() {
+        const clientId = document.getElementById('clientId').value.trim();
+        const clientSecret = document.getElementById('clientSecret').value.trim();
+        const consumerKey = document.getElementById('consumerKey').value.trim();
+        const consumerSecret = document.getElementById('consumerSecret').value.trim();
+        
+        this.clientId = clientId;
+        if (clientSecret && !clientSecret.includes('•')) this.clientSecret = clientSecret;
+        this.consumerKey = consumerKey;
+        if (consumerSecret && !consumerSecret.includes('•')) this.consumerSecret = consumerSecret;
+        
+        localStorage.setItem('foodlog_creds', JSON.stringify({
+            clientId: this.clientId, clientSecret: this.clientSecret,
+            consumerKey: this.consumerKey, consumerSecret: this.consumerSecret,
+            userToken: this.userToken, userSecret: this.userSecret
+        }));
+        
+        document.getElementById('connectBtn').disabled = false;
+        this.getAccessToken();
+        this.showToast('Opgeslagen!');
+    },
+    
+    updateAccountStatus() {
+        const btn = document.getElementById('connectBtn');
+        const status = document.getElementById('accountStatus');
+        if (this.userToken && this.userSecret) {
+            btn.textContent = 'Gekoppeld ✓';
+            btn.classList.add('btn-success');
+            status.textContent = 'Account gekoppeld! Je kunt nu voeding loggen.';
+            status.style.color = '#4ade80';
+        }
+    },
+    
+    async getAccessToken() {
+        if (!this.clientId || !this.clientSecret) {
+            this.updateStatus(false, 'Credentials ontbreken');
+            return null;
+        }
+        if (this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry) return this.accessToken;
+        
+        try {
+            this.updateStatus(false, 'Verbinden...');
+            const res = await fetch('https://oauth.fatsecret.com/connect/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    grant_type: 'client_credentials',
+                    client_id: this.clientId,
+                    client_secret: this.clientSecret,
+                    scope: 'basic'
+                })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            this.accessToken = data.access_token;
+            this.tokenExpiry = Date.now() + (data.expires_in - 60) * 1000;
+            const linked = this.userToken && this.userSecret;
+            this.updateStatus(true, linked ? 'Verbonden ✓' : 'Verbonden - koppel account');
+            document.getElementById('connectBtn').disabled = false;
+            return this.accessToken;
+        } catch (e) {
+            this.updateStatus(false, `Fout: ${e.message}`);
+            return null;
+        }
+    },
+    
+    updateStatus(connected, msg) {
+        document.getElementById('statusDot').className = `status-dot ${connected ? 'connected' : ''}`;
+        document.getElementById('statusText').textContent = msg;
+    },
+    
+    percentEncode(str) {
+        return encodeURIComponent(String(str))
+            .replace(/!/g,'%21').replace(/\*/g,'%2A').replace(/'/g,'%27')
+            .replace(/\(/g,'%28').replace(/\)/g,'%29');
+    },
+    
+    async generateSignature(method, url, params, tokenSecret = '') {
+        const sorted = Object.keys(params).sort()
+            .map(k => `${this.percentEncode(k)}=${this.percentEncode(params[k])}`).join('&');
+        const base = [method.toUpperCase(), this.percentEncode(url), this.percentEncode(sorted)].join('&');
+        const key = `${this.percentEncode(this.consumerSecret)}&${this.percentEncode(tokenSecret)}`;
+        const enc = new TextEncoder();
+        const cryptoKey = await crypto.subtle.importKey('raw', enc.encode(key), {name:'HMAC',hash:'SHA-1'}, false, ['sign']);
+        const sig = await crypto.subtle.sign('HMAC', cryptoKey, enc.encode(base));
+        return btoa(String.fromCharCode(...new Uint8Array(sig)));
+    },
+    
+    generateNonce() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        return Array(32).fill(0).map(() => chars[Math.floor(Math.random()*chars.length)]).join('');
+    },
+    
+    async startOAuthFlow() {
+        if (!this.consumerKey || !this.consumerSecret) { alert('Vul Consumer credentials in'); return; }
+        try {
+            const btn = document.getElementById('connectBtn');
+            btn.disabled = true; btn.textContent = 'Bezig...';
+            
+            const callback = window.location.href.split('?')[0];
+            const url = 'https://www.fatsecret.com/oauth/request_token';
+            const params = {
+                oauth_callback: callback,
+                oauth_consumer_key: this.consumerKey,
+                oauth_nonce: this.generateNonce(),
+                oauth_signature_method: 'HMAC-SHA1',
+                oauth_timestamp: Math.floor(Date.now()/1000).toString(),
+                oauth_version: '1.0'
+            };
+            params.oauth_signature = await this.generateSignature('POST', url, params, '');
+            
+            const authHeader = 'OAuth ' + Object.keys(params)
+                .map(k => `${this.percentEncode(k)}="${this.percentEncode(params[k])}"`).join(', ');
+            
+            const res = await fetch(url, { method: 'POST', headers: { 'Authorization': authHeader } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            const text = await res.text();
+            const data = new URLSearchParams(text);
+            const token = data.get('oauth_token');
+            const secret = data.get('oauth_token_secret');
+            if (!token) throw new Error('Geen token');
+            
+            sessionStorage.setItem('oauth_secret', secret);
+            window.location.href = `https://www.fatsecret.com/oauth/authorize?oauth_token=${token}`;
+        } catch (e) {
+            alert(`Fout: ${e.message}`);
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('connectBtn').textContent = 'Account Koppelen';
+        }
+    },
+    
+    async handleOAuthCallback() {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('oauth_token');
+        const verifier = params.get('oauth_verifier');
+        if (!token || !verifier) return;
+        
+        window.history.replaceState({}, '', window.location.pathname);
+        const secret = sessionStorage.getItem('oauth_secret');
+        if (!secret) return;
+        
+        try {
+            const url = 'https://www.fatsecret.com/oauth/access_token';
+            const oauthParams = {
+                oauth_consumer_key: this.consumerKey,
+                oauth_nonce: this.generateNonce(),
+                oauth_signature_method: 'HMAC-SHA1',
+                oauth_timestamp: Math.floor(Date.now()/1000).toString(),
+                oauth_token: token,
+                oauth_verifier: verifier,
+                oauth_version: '1.0'
+            };
+            oauthParams.oauth_signature = await this.generateSignature('POST', url, oauthParams, secret);
+            
+            const authHeader = 'OAuth ' + Object.keys(oauthParams)
+                .map(k => `${this.percentEncode(k)}="${this.percentEncode(oauthParams[k])}"`).join(', ');
+            
+            const res = await fetch(url, { method: 'POST', headers: { 'Authorization': authHeader } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            const text = await res.text();
+            const data = new URLSearchParams(text);
+            this.userToken = data.get('oauth_token');
+            this.userSecret = data.get('oauth_token_secret');
+            
+            const saved = JSON.parse(localStorage.getItem('foodlog_creds') || '{}');
+            saved.userToken = this.userToken;
+            saved.userSecret = this.userSecret;
+            localStorage.setItem('foodlog_creds', JSON.stringify(saved));
+            
+            sessionStorage.removeItem('oauth_secret');
+            this.updateAccountStatus();
+            this.updateStatus(true, 'Verbonden ✓');
+            this.showToast('Account gekoppeld!');
+        } catch (e) {
+            alert(`Fout: ${e.message}`);
+        }
+    },
+    
+    async searchFood(query, max = 10) {
+        const token = await this.getAccessToken();
+        if (!token) return [];
+        try {
+            const res = await fetch('https://platform.fatsecret.com/rest/server.api', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ method: 'foods.search', search_expression: query, format: 'json', max_results: max })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (data.foods?.food) return Array.isArray(data.foods.food) ? data.foods.food : [data.foods.food];
+            return [];
+        } catch (e) { console.error(e); return []; }
+    },
+    
+    async getFoodDetails(foodId) {
+        const token = await this.getAccessToken();
+        if (!token) return null;
+        try {
+            const res = await fetch('https://platform.fatsecret.com/rest/server.api', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ method: 'food.get.v4', food_id: foodId, format: 'json' })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (e) { console.error(e); return null; }
+    },
+    
+    async addFoodEntry(foodId, servingId, units, meal, name) {
+        if (!this.userToken || !this.userSecret) { alert('Koppel eerst je account'); return false; }
+        try {
+            const url = 'https://platform.fatsecret.com/rest/server.api';
+            const params = {
+                format: 'json', method: 'food_entry.create.v2',
+                food_id: foodId, food_entry_name: name,
+                serving_id: servingId, number_of_units: units.toString(), meal: meal
+            };
+            const oauthParams = {
+                oauth_consumer_key: this.consumerKey,
+                oauth_nonce: this.generateNonce(),
+                oauth_signature_method: 'HMAC-SHA1',
+                oauth_timestamp: Math.floor(Date.now()/1000).toString(),
+                oauth_token: this.userToken,
+                oauth_version: '1.0'
+            };
+            const all = { ...params, ...oauthParams };
+            oauthParams.oauth_signature = await this.generateSignature('POST', url, all, this.userSecret);
+            
+            const authHeader = 'OAuth ' + Object.keys(oauthParams)
+                .map(k => `${this.percentEncode(k)}="${this.percentEncode(oauthParams[k])}"`).join(', ');
+            
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Authorization': authHeader, 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(params)
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return true;
+        } catch (e) { console.error(e); this.showToast(`Fout: ${e.message}`, true); return false; }
+    },
+    
+    async parseInput() {
+        const input = document.getElementById('foodInput').value.trim();
+        if (!input) return;
+        
+        document.getElementById('resultsList').innerHTML = '<div class="loading">Zoeken</div>';
+        document.getElementById('resultsCard').style.display = 'block';
+        document.getElementById('addAllBtn').style.display = 'none';
+        
+        const mealMap = { ontbijt:'Breakfast', lunch:'Lunch', avondeten:'Dinner', diner:'Dinner', tussendoor:'Other', snack:'Other' };
+        const wordNums = { een:1, twee:2, drie:3, vier:4, vijf:5, zes:6, zeven:7, acht:8, negen:9, tien:10, half:0.5, halve:0.5 };
+        
+        const lines = input.split('\n').filter(l => l.trim());
+        this.parsedItems = [];
+        let currentMeal = 'Other';
+        
+        for (const line of lines) {
+            const mealMatch = line.toLowerCase().match(/^(ontbijt|lunch|avondeten|diner|tussendoor|snack)s?:?\s*/i);
+            if (mealMatch) currentMeal = mealMap[mealMatch[1].toLowerCase()] || 'Other';
+            
+            const content = mealMatch ? line.substring(mealMatch[0].length) : line;
+            const parts = content.split(/,|\sen\s/).map(p => p.trim()).filter(p => p);
+            
+            for (const part of parts) {
+                let qty = 1, name = part;
+                const numMatch = part.match(/^(\d+(?:[.,]\d+)?)\s*(g|gram|kg|ml|l|stuks?|st\.?)?\s*(.+)$/i);
+                const wordMatch = part.match(/^(een|twee|drie|vier|vijf|zes|zeven|acht|negen|tien|half|halve)\s+(.+)$/i);
+                
+                if (numMatch) { qty = parseFloat(numMatch[1].replace(',','.')); name = numMatch[3]; }
+                else if (wordMatch) { qty = wordNums[wordMatch[1].toLowerCase()] || 1; name = wordMatch[2]; }
+                
+                name = name.replace(/^(met|van)\s+/i, '').trim();
+                if (!name) continue;
+                
+                const results = await this.searchFood(name, 5);
+                let servings = [];
+                if (results.length > 0) {
+                    const details = await this.getFoodDetails(results[0].food_id);
+                    if (details?.food?.servings?.serving) {
+                        const s = details.food.servings.serving;
+                        servings = Array.isArray(s) ? s : [s];
+                    }
+                }
+                this.parsedItems.push({ original: part, name, qty, meal: currentMeal, results, selectedFood: 0, servings, selectedServing: 0, added: false });
+            }
+        }
+        this.renderResults();
+    },
+    
+    renderResults() {
+        const list = document.getElementById('resultsList');
+        if (this.parsedItems.length === 0) { list.innerHTML = '<div class="error-box">Geen items</div>'; return; }
+        
+        list.innerHTML = this.parsedItems.map((item, i) => {
+            const food = item.results[item.selectedFood];
+            const serving = item.servings[item.selectedServing];
+            return `
+                <div class="food-item">
+                    <div class="food-name">${item.qty} × ${item.name}</div>
+                    <div class="food-meta">Maaltijd: ${item.meal}</div>
+                    ${item.results.length > 0 ? `
+                        <div class="food-match">
+                            <select onchange="app.updateFood(${i}, this.value)">
+                                ${item.results.map((r,ri) => `<option value="${ri}" ${ri===item.selectedFood?'selected':''}>${r.food_name}${r.brand_name?` (${r.brand_name})`:''}</option>`).join('')}
+                            </select>
+                            ${item.servings.length > 0 ? `
+                                <select onchange="app.updateServing(${i}, this.value)">
+                                    ${item.servings.map((s,si) => `<option value="${si}" ${si===item.selectedServing?'selected':''}>${s.serving_description} (${s.calories} kcal)</option>`).join('')}
+                                </select>
+                                <div class="macros">Kcal: <span>${serving?.calories||'-'}</span> | E: <span>${serving?.protein||'-'}g</span> | K: <span>${serving?.carbohydrate||'-'}g</span> | V: <span>${serving?.fat||'-'}g</span></div>
+                            ` : ''}
+                        </div>
+                        <div class="food-actions">
+                            <button class="btn ${item.added?'btn-success':'btn-secondary'}" onclick="app.addSingle(${i})" ${item.added?'disabled':''}>${item.added?'Toegevoegd ✓':'Toevoegen'}</button>
+                        </div>
+                    ` : '<div class="error-box">Geen resultaten</div>'}
+                </div>`;
+        }).join('');
+        
+        if (this.parsedItems.some(i => i.results.length > 0)) document.getElementById('addAllBtn').style.display = 'block';
+    },
+    
+    async updateFood(i, fi) {
+        this.parsedItems[i].selectedFood = parseInt(fi);
+        const details = await this.getFoodDetails(this.parsedItems[i].results[fi].food_id);
+        if (details?.food?.servings?.serving) {
+            const s = details.food.servings.serving;
+            this.parsedItems[i].servings = Array.isArray(s) ? s : [s];
+            this.parsedItems[i].selectedServing = 0;
+        }
+        this.renderResults();
+    },
+    
+    updateServing(i, si) { this.parsedItems[i].selectedServing = parseInt(si); this.renderResults(); },
+    
+    async addSingle(i) {
+        const item = this.parsedItems[i];
+        if (!item.results.length || !item.servings.length) return;
+        const food = item.results[item.selectedFood];
+        const serving = item.servings[item.selectedServing];
+        if (await this.addFoodEntry(food.food_id, serving.serving_id, item.qty, item.meal, food.food_name)) {
+            item.added = true;
+            this.renderResults();
+            this.showToast('Toegevoegd!');
+        }
+    },
+    
+    async addAll() {
+        const btn = document.getElementById('addAllBtn');
+        btn.disabled = true; btn.textContent = 'Bezig...';
+        let count = 0;
+        for (let i = 0; i < this.parsedItems.length; i++) {
+            const item = this.parsedItems[i];
+            if (!item.added && item.results.length && item.servings.length) {
+                const food = item.results[item.selectedFood];
+                const serving = item.servings[item.selectedServing];
+                if (await this.addFoodEntry(food.food_id, serving.serving_id, item.qty, item.meal, food.food_name)) {
+                    item.added = true; count++;
+                }
+            }
+        }
+        this.renderResults();
+        btn.textContent = `${count} toegevoegd ✓`;
+        btn.classList.add('btn-success');
+        this.showToast(`${count} items toegevoegd!`);
+    },
+    
+    async doSearch() {
+        const query = document.getElementById('searchInput').value.trim();
+        if (!query) return;
+        document.getElementById('searchResultsList').innerHTML = '<div class="loading">Zoeken</div>';
+        document.getElementById('searchResultsCard').style.display = 'block';
+        const results = await this.searchFood(query, 15);
+        if (results.length === 0) { document.getElementById('searchResultsList').innerHTML = '<div class="error-box">Geen resultaten</div>'; return; }
+        document.getElementById('searchResultsList').innerHTML = results.map(f => `
+            <div class="search-result">
+                <div class="search-result-name">${f.food_name}</div>
+                ${f.brand_name ? `<div class="search-result-brand">${f.brand_name}</div>` : ''}
+                <div class="search-result-macros">${f.food_description}</div>
+            </div>
+        `).join('');
+    },
+    
+    setupEventListeners() {
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+            });
+        });
+        document.getElementById('parseBtn').addEventListener('click', () => this.parseInput());
+        document.getElementById('searchBtn').addEventListener('click', () => this.doSearch());
+        document.getElementById('saveBtn').addEventListener('click', () => this.saveCredentials());
+        document.getElementById('connectBtn').addEventListener('click', () => this.startOAuthFlow());
+        document.getElementById('addAllBtn').addEventListener('click', () => this.addAll());
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if (confirm('Weet je het zeker?')) { localStorage.removeItem('foodlog_creds'); location.reload(); }
+        });
+        document.getElementById('searchInput').addEventListener('keypress', e => { if (e.key === 'Enter') this.doSearch(); });
+    },
+    
+    showToast(msg, isError = false) {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.className = `toast ${isError ? 'error' : ''}`;
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => app.init());
+</script>
+</body>
+</html>
