@@ -137,7 +137,7 @@
     </style>
 </head>
 <body>
-    <div class="header"><h1>🥗 FOODLOG</h1><div style="font-size: 12px; color: #64748b;">v1.3</div></div>
+    <div class="header"><h1>🥗 FOODLOG</h1><div style="font-size: 12px; color: #64748b;">v1.4</div></div>
     
     <div class="status">
         <div class="status-dot" id="statusDot"></div>
@@ -357,12 +357,10 @@ const app = {
             };
             params.oauth_signature = await this.generateSignature('POST', realUrl, params, '');
             
-            const authHeader = 'OAuth ' + Object.keys(params)
-                .map(k => `${this.percentEncode(k)}="${this.percentEncode(params[k])}"`).join(', ');
-            
             const res = await fetch(`${PROXY_URL}/oauth/request_token`, { 
-                method: 'POST', 
-                headers: { 'Authorization': authHeader } 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(params)
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             
@@ -404,12 +402,10 @@ const app = {
             };
             oauthParams.oauth_signature = await this.generateSignature('POST', realUrl, oauthParams, secret);
             
-            const authHeader = 'OAuth ' + Object.keys(oauthParams)
-                .map(k => `${this.percentEncode(k)}="${this.percentEncode(oauthParams[k])}"`).join(', ');
-            
             const res = await fetch(`${PROXY_URL}/oauth/access_token`, { 
-                method: 'POST', 
-                headers: { 'Authorization': authHeader } 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(oauthParams)
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             
