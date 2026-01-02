@@ -139,7 +139,7 @@
     </style>
 </head>
 <body>
-    <div class="header"><h1>🥗 FOODLOG</h1><div style="font-size: 12px; color: #64748b;">v1.4</div></div>
+    <div class="header"><h1>🥗 FOODLOG</h1><div style="font-size: 12px; color: #64748b;">v1.5</div></div>
     
     <div class="status">
         <div class="status-dot" id="statusDot"></div>
@@ -373,7 +373,7 @@ const app = {
             if (!token) throw new Error('Geen token');
             
             sessionStorage.setItem('oauth_secret', secret);
-            window.location.href = `https://www.fatsecret.com/oauth/authorize?oauth_token=${token}`;
+            window.location.href = `https://authentication.fatsecret.com/oauth/authorize?oauth_token=${token}`;
         } catch (e) {
             alert(`Fout: ${e.message}`);
             document.getElementById('connectBtn').disabled = false;
